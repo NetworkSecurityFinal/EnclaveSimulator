@@ -32,6 +32,12 @@ import javax.crypto.spec.DHParameterSpec;
 public class Enclave
 {
 
+	// fields used for the enclave attack simulation
+	private boolean createInterrupt;
+	private int authCount;
+	private HashSet<General> generalInfo;
+	
+
 	// Hold the p and g values for the DHKE
 	private static DHParameterSpec paramSpec;
 	/*
@@ -39,19 +45,14 @@ public class Enclave
 	 * when the enclave was created These are kept hidden from the manufacturer
 	 * (Intel) and used to generate other provisioning keys
 	 */
-	static byte[] sealing_key = new byte[16];
-	static byte[] provisioning_key = new byte[16];
+	private static byte[] sealing_key = new byte[16];
+	private static byte[] provisioning_key = new byte[16];
 
 	private int eid;
 	private String FileName;
 	private PublicKey spPublicKey;
 	private KeyPair dhKeyPair;
 	private KeyAgreement dhKeyAgree;
-
-	// fields used for the enclave attack simulation
-	private int authCount;
-	private HashSet<General> generalInfo;
-	private boolean createInterrupt;
 
 	static
 	{
@@ -74,7 +75,7 @@ public class Enclave
 	 * @param enclaveFileName
 	 * @param enclaveID
 	 */
-	public Enclave(String enclaveFileName, int enclaveID)
+	protected Enclave(String enclaveFileName, int enclaveID)
 	{
 		// Make the choice to not load enclave file
 		// Don't use a creation token
@@ -82,23 +83,26 @@ public class Enclave
 		eid = enclaveID;
 	}
 
-	public Enclave()
+	protected Enclave()
 	{
 		setAuthCount(0);
 		setGeneralInfo(new HashSet<>());
 		setCreateInterrupt(false);
 	};
 
-	
-	public static void main(String args[]){
+	protected static void main(String args[])
+	{
 		enclaveAttackSimulation();
 	}
-	
-	
-	public static void enclaveAttackSimulation()
+
+	/**
+	 * Reads in the request from the environment code
+	 * and calls 
+	 */
+	protected static void enclaveAttackSimulation()
 	{
 		System.out.println("Enclave listening...");
-		
+
 		Enclave enclave = new Enclave();
 		General g1 = new General("general1", 12345L);
 		General g2 = new General("general2", 56789L);
@@ -123,41 +127,41 @@ public class Enclave
 		{
 			e.printStackTrace();
 		}
-		
+
 	}
 
-	public void addGeneralToAuth(General g)
+	protected void addGeneralToAuth(General g)
 	{
 		this.generalInfo.add(g);
 
 	}
 
-	public int getAuthCount()
+	protected int getAuthCount()
 	{
 		return authCount;
 	}
 
-	public void setAuthCount(int authCount)
+	protected void setAuthCount(int authCount)
 	{
 		this.authCount = authCount;
 	}
 
-	public boolean createInterrupt()
+	protected boolean createInterrupt()
 	{
 		return createInterrupt;
 	}
 
-	public void setCreateInterrupt(boolean createInterrupt)
+	protected void setCreateInterrupt(boolean createInterrupt)
 	{
 		this.createInterrupt = createInterrupt;
 	}
 
-	public HashSet<General> getGeneralInfo()
+	protected HashSet<General> getGeneralInfo()
 	{
 		return generalInfo;
 	}
 
-	public void setGeneralInfo(HashSet<General> generalInfo)
+	protected void setGeneralInfo(HashSet<General> generalInfo)
 	{
 		this.generalInfo = generalInfo;
 	}
@@ -166,11 +170,11 @@ public class Enclave
 	 * These functions are for initializing PSE, which is where TPM logic would
 	 * be called These need to be called before and after sgx_ra_init()
 	 */
-	public void sgx_create_pse_session()
+	protected void sgx_create_pse_session()
 	{
 	}
 
-	public void sgx_close_pse_session()
+	protected void sgx_close_pse_session()
 	{
 	}
 
@@ -182,7 +186,7 @@ public class Enclave
 	 *            The service provider's public key
 	 * @return the public Diffie Hellman key
 	 */
-	public DHPublicKey sgx_ra_init(PublicKey spPubKey)
+	protected DHPublicKey sgx_ra_init(PublicKey spPubKey)
 	{
 		try
 		{
@@ -217,7 +221,7 @@ public class Enclave
 	 * 
 	 * @return extended group id
 	 */
-	public int sgx_get_extended_epid_group_id()
+	protected int sgx_get_extended_epid_group_id()
 	{
 		return 0;
 	}
@@ -225,7 +229,7 @@ public class Enclave
 	/**
 	 * 
 	 */
-	public void sgx_ra_get_msg1()
+	protected void sgx_ra_get_msg1()
 	{
 
 	}
@@ -233,7 +237,7 @@ public class Enclave
 	/*
 	 * sgx_ra_proc_msg
 	 */
-	public void sgx_ra_proc_msg2()
+	protected void sgx_ra_proc_msg2()
 	{
 		// verify the service provider signature
 		// Check the SigRl
@@ -242,7 +246,7 @@ public class Enclave
 	}
 
 	// some code goes in here to get the quote for the enclave
-	private void GetQuote()
+	protected void GetQuote()
 	{
 
 	}
