@@ -29,17 +29,13 @@ import javax.crypto.spec.DHParameterSpec;
  * @author Madeline MacDonald & Benjamin Kargul & Jen Simons & Makenzie Elliott
  * 
  */
-public class Enclave
-{
+public class Enclave {
 
 	// fields used for the enclave attack simulation
 	private boolean createInterrupt;
 	private int authCount;
 	private HashSet<General> generalInfo;
-	
 
-	// Hold the p and g values for the DHKE
-	private static DHParameterSpec paramSpec;
 	/*
 	 * These are hardware keys in a real enclave these would have been generated
 	 * when the enclave was created These are kept hidden from the manufacturer
@@ -53,54 +49,47 @@ public class Enclave
 	private PublicKey spPublicKey;
 	private KeyPair dhKeyPair;
 	private KeyAgreement dhKeyAgree;
+	// Hold the p and g values for the DHKE
+	private DHParameterSpec paramSpec;
 
-	static
-	{
+	static {
 
 		// generate keys in a static block
 		// to simulate their creation when the hardware was made
 		SecureRandom sr = new SecureRandom();
 		sr.nextBytes(provisioning_key);
 		sr.nextBytes(sealing_key);
-
-		// Init P and G for Diffie Hellman
-		paramSpec = new DHParameterSpec(new BigInteger("47"), new BigInteger("71"));
 	}
 
 	/**
-	 * Creates a new instance of an enclave simulator that exposes a subset of
-	 * the SGX instruction set used for remote attestation. This is equivalent
-	 * to sgx_create_enclave()
+	 * Creates a new instance of an enclave simulator that exposes a subset of the
+	 * SGX instruction set used for remote attestation. This is equivalent to
+	 * sgx_create_enclave()
 	 * 
 	 * @param enclaveFileName
 	 * @param enclaveID
 	 */
-	protected Enclave(String enclaveFileName, int enclaveID)
-	{
+	protected Enclave(String enclaveFileName, int enclaveID) {
 		// Make the choice to not load enclave file
 		// Don't use a creation token
 
 		eid = enclaveID;
 	}
 
-	protected Enclave()
-	{
+	protected Enclave() {
 		setAuthCount(0);
 		setGeneralInfo(new HashSet<>());
 		setCreateInterrupt(false);
 	};
 
-	protected static void main(String args[])
-	{
+	protected static void main(String args[]) {
 		enclaveAttackSimulation();
 	}
 
 	/**
-	 * Reads in the request from the environment code
-	 * and calls 
+	 * Reads in the request from the environment code and calls
 	 */
-	protected static void enclaveAttackSimulation()
-	{
+	protected static void enclaveAttackSimulation() {
 		System.out.println("Enclave listening...");
 
 		Enclave enclave = new Enclave();
@@ -112,84 +101,73 @@ public class Enclave
 
 		ServerSocket listener = null;
 
-		try
-		{
+		try {
 			listener = new ServerSocket(9090);
-			while (true)
-			{
+			while (true) {
 				Socket socket = listener.accept();
 
 				new Thread(new ThreadWorker(socket, enclave)).start();
 
 			}
 
-		} catch (IOException e)
-		{
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
 	}
 
-	protected void addGeneralToAuth(General g)
-	{
+	protected void addGeneralToAuth(General g) {
 		this.generalInfo.add(g);
 
 	}
 
-	protected int getAuthCount()
-	{
+	protected int getAuthCount() {
 		return authCount;
 	}
 
-	protected void setAuthCount(int authCount)
-	{
+	protected void setAuthCount(int authCount) {
 		this.authCount = authCount;
 	}
 
-	protected boolean createInterrupt()
-	{
+	protected boolean createInterrupt() {
 		return createInterrupt;
 	}
 
-	protected void setCreateInterrupt(boolean createInterrupt)
-	{
+	protected void setCreateInterrupt(boolean createInterrupt) {
 		this.createInterrupt = createInterrupt;
 	}
 
-	protected HashSet<General> getGeneralInfo()
-	{
+	protected HashSet<General> getGeneralInfo() {
 		return generalInfo;
 	}
 
-	protected void setGeneralInfo(HashSet<General> generalInfo)
-	{
+	protected void setGeneralInfo(HashSet<General> generalInfo) {
 		this.generalInfo = generalInfo;
 	}
 
 	/*
-	 * These functions are for initializing PSE, which is where TPM logic would
-	 * be called These need to be called before and after sgx_ra_init()
+	 * These functions are for initializing PSE, which is where TPM logic would be
+	 * called These need to be called before and after sgx_ra_init() These methods
+	 * would be used in some of the proposed attacks our group considered but
+	 * ultimately we decided against using them. These are left in for illustrative
+	 * purposes
 	 */
-	protected void sgx_create_pse_session()
-	{
+	protected void sgx_create_pse_session() {
 	}
 
-	protected void sgx_close_pse_session()
-	{
+	protected void sgx_close_pse_session() {
 	}
 
 	/**
-	 * Initializes the enclave for remote attestation. Stores the service
-	 * provider's public key, and initializes a Diffie Hellman key exchange
+	 * Initializes the enclave for remote attestation. Stores the service provider's
+	 * public key, and initializes a Diffie Hellman key exchange
 	 * 
 	 * @param spPubKey
 	 *            The service provider's public key
-	 * @return the public Diffie Hellman key
 	 */
-	protected DHPublicKey sgx_ra_init(PublicKey spPubKey)
-	{
-		try
-		{
+	protected void sgx_ra_init(PublicKey spPubKey, DHParameterSpec paramSpec) {
+		try {
+			this.paramSpec = paramSpec;
 			spPublicKey = spPubKey;
 			KeyPairGenerator kpg = KeyPairGenerator.getInstance("DiffieHellman");
 			kpg.initialize(paramSpec);
@@ -197,19 +175,13 @@ public class Enclave
 			dhKeyAgree = KeyAgreement.getInstance("DiffieHellman");
 			dhKeyAgree.init(dhKeyPair.getPrivate());
 
-			return (DHPublicKey) dhKeyPair.getPublic();
-		} catch (NoSuchAlgorithmException e)
-		{
+		} catch (NoSuchAlgorithmException e) {
 			System.out.println(e.getMessage());
-		} catch (InvalidAlgorithmParameterException e)
-		{
+		} catch (InvalidAlgorithmParameterException e) {
 			System.out.println(e.getMessage());
-		} catch (InvalidKeyException e)
-		{
+		} catch (InvalidKeyException e) {
 			System.out.println(e.getMessage());
 		}
-
-		return (DHPublicKey) dhKeyPair.getPublic();
 	}
 
 	/**
@@ -221,33 +193,35 @@ public class Enclave
 	 * 
 	 * @return extended group id
 	 */
-	protected int sgx_get_extended_epid_group_id()
-	{
+	protected int sgx_get_extended_epid_group_id() {
 		return 0;
 	}
 
 	/**
+	 * @return a DH value from the enclave
 	 * 
 	 */
-	protected void sgx_ra_get_msg1()
-	{
-
+	protected String sgx_ra_get_msg1() {
+		return dhKeyPair.getPublic().toString();
 	}
 
-	/*
-	 * sgx_ra_proc_msg
+	/**
+	 * Verifies the service provider's signature Check the SigRl (Omited from the
+	 * simulation) Generates Message 3, the response to Message 2. This message
+	 * contains a qoute from the enclave signed with the platform's EPID key. Only
+	 * Intel Attestation Services can verify this signature Because this is a
+	 * simulation, and we don't have EPID keys, this signing step is omitted
 	 */
-	protected void sgx_ra_proc_msg2()
-	{
+	protected String sgx_ra_proc_msg2(String m2) {
+
 		// verify the service provider signature
 		// Check the SigRl
-		// generate msg 3
-		// msg 3 contains quote to attest enclave
+		return GetQuote();
 	}
 
 	// some code goes in here to get the quote for the enclave
-	protected void GetQuote()
-	{
-
+	//
+	private String GetQuote() {
+		return "";
 	}
 }
