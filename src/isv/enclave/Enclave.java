@@ -6,18 +6,26 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.Signature;
+import java.security.SignatureException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.HashSet;
 
 import javax.crypto.KeyAgreement;
 import javax.crypto.interfaces.DHPublicKey;
 import javax.crypto.spec.DHParameterSpec;
+import javax.crypto.spec.DHPublicKeySpec;
 
 /**
  * Software simulation of an SGX enclave that exposes a subset of the SGX
@@ -51,6 +59,8 @@ public class Enclave {
 	private KeyAgreement dhKeyAgree;
 	// Hold the p and g values for the DHKE
 	private DHParameterSpec paramSpec;
+	// final shared DH key
+	byte[] sharedKeyBytes;
 
 	static {
 
@@ -201,27 +211,86 @@ public class Enclave {
 	 * @return a DH value from the enclave
 	 * 
 	 */
-	protected String sgx_ra_get_msg1() {
-		return dhKeyPair.getPublic().toString();
+	protected byte[] sgx_ra_get_msg1() {
+		return dhKeyPair.getPublic().getEncoded();
 	}
 
 	/**
-	 * Verifies the service provider's signature Check the SigRl (Omited from the
+	 * Verifies the service provider's signature Check the SigRl (Omitted from the
 	 * simulation) Generates Message 3, the response to Message 2. This message
-	 * contains a qoute from the enclave signed with the platform's EPID key. Only
+	 * contains a quote from the enclave signed with the platform's EPID key. Only
 	 * Intel Attestation Services can verify this signature Because this is a
 	 * simulation, and we don't have EPID keys, this signing step is omitted
 	 */
-	protected String sgx_ra_proc_msg2(String m2) {
+	protected byte[] sgx_ra_proc_msg2(String m2) {
 
 		// verify the service provider signature
-		// Check the SigRl
+		// Not implemented currently
+
+		String[] parts = m2.split(" ");
+
+		// calculate the DH shared key
+		sharedKeyBytes = computeSharedKey(parts[0].getBytes());
+
+		// Check the SigRl (Omitted)
+
 		return GetQuote();
 	}
 
-	// some code goes in here to get the quote for the enclave
-	//
-	private String GetQuote() {
-		return "";
+	// This code is from
+	// https://stackoverflow.com/questions/21081713/diffie-hellman-key-exchange-in-java
+	// It was the best explanation of how to use the java libraries for DH
+	// and so in the interest of saving time to focus on the enclave implementation
+	// details we chose to use this
+	public byte[] computeSharedKey(byte[] pubKeyBytes) {
+		if (dhKeyAgree == null) {
+			System.out.println("Key Agreement is Null");
+			return null;
+		}
+
+		try {
+			KeyFactory keyFactory = KeyFactory.getInstance("DiffieHellman");
+			BigInteger pubKeyBI = new BigInteger(1, pubKeyBytes);
+			PublicKey pubKey = keyFactory
+					.generatePublic(new DHPublicKeySpec(pubKeyBI, paramSpec.getP(), paramSpec.getG()));
+			dhKeyAgree.doPhase(pubKey, true);
+			byte[] sharedKeyBytes = dhKeyAgree.generateSecret();
+			return sharedKeyBytes;
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+			return null;
+		}
+	}
+
+	/**
+	 * Intel's documentation is fairly sparse on exactly what is contained in a
+	 * Quote So we chose to implement this as just having some metadata from the
+	 * enclave collected and packaged up This quote would be signed by an EPID,
+	 * which is a hardware specific key that only the Intel attestation service can
+	 * decrypt, but due to limitations in hardware we're using the shared DH key to encrypt this instead
+	 * 
+	 * @return The enclave quote
+	 */
+	private byte[] GetQuote() {
+
+		try {
+			ByteBuffer b = ByteBuffer.allocate(4);
+			b.putInt(eid);
+
+			byte[] data = b.array();
+
+			PrivateKey privateKey = KeyFactory.getInstance("RSA")
+					.generatePrivate(new PKCS8EncodedKeySpec(sharedKeyBytes));
+			Signature sig = Signature.getInstance("SHA1WithRSA");
+
+			sig.initSign(privateKey);
+			sig.update(data);
+
+			return sig.sign();
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+		}
+		return null;
+
 	}
 }

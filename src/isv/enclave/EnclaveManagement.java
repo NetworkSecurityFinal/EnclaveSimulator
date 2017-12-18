@@ -79,7 +79,7 @@ public class EnclaveManagement
 	 * relevant stub functions, but for the purposes of this simulation they are omitted
 	 * @return Message 1
 	 */
-	public String getMessage1()
+	public byte[] getMessage1()
 	{
 		return enclave.sgx_ra_get_msg1();
 	}
@@ -91,7 +91,7 @@ public class EnclaveManagement
 	 * @param m2 Message 2
 	 * @return Message 3, the response to Message 2
 	 */
-	public String processMessage2(String m2)
+	public byte[] processMessage2(String m2)
 	{
 		return enclave.sgx_ra_proc_msg2(m2);
 	}

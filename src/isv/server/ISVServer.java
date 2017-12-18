@@ -2,6 +2,12 @@ package isv.server;
 
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PublicKey;
+import java.security.SecureRandom;
 import java.io.*;
 
 /**
@@ -36,5 +42,15 @@ public class ISVServer
 	public void ProvisionResponse()
 	{
 
+	}
+	
+	public void ProvisionPrivateKeys() throws NoSuchAlgorithmException, NoSuchProviderException
+	{
+		//this public key needs to be sent to the client somehow, ideally during the handshake
+		KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DSA", "SUN");
+		SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
+		keyGen.initialize(1024, random);
+		KeyPair pair = keyGen.generateKeyPair();
+		PublicKey spPub = pair.getPublic();
 	}
 }

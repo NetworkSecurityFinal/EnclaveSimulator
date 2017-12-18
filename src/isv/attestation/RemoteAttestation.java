@@ -69,33 +69,35 @@ public class RemoteAttestation {
 
 		try {
 			
-			//This should happen on the server, and then get sent over as part of the handshake
-			//For now we generate it ourselves
+			//This code is duplicated in the Server
+			//Eventually we will have the server sent the public key over to the user as part of the handshake
 			KeyPairGenerator keyGen = KeyPairGenerator.getInstance("DSA", "SUN");
 			SecureRandom random = SecureRandom.getInstance("SHA1PRNG", "SUN");
 			keyGen.initialize(1024, random);
 			KeyPair pair = keyGen.generateKeyPair();
 			PublicKey spPub = pair.getPublic();
 			
-			em.getMessage0(spPub);
-			// send message 0
-			// get response from message 0
-			em.verifyMessage0Response("Continue");
+			String m0 = em.getMessage0(spPub);
+			out.print(m0 + "\r\n");
+			String m0Response = in.readLine();
 
-			String m1 = em.getMessage1();
-			// send message 1
-			// wait for response from message
+			if(!em.verifyMessage0Response(m0Response))
+			{
+				System.out.println("Attestation failed: unknown group ID");
+			}
 
-			String m3 = em.processMessage2("");
-			// send message 3
-			// wait for response
+			socket.getOutputStream().write(em.getMessage1());
 
-			if (!em.verifyMessage4("")) {
-				// Throw some sort of descriptive error here
+			String m2 = in.readLine();
+			socket.getOutputStream().write(em.processMessage2(m2));
+			
+			String m4 = in.readLine();
+
+			if (!em.verifyMessage4(m4)) {
+				System.out.println("Attestation Failed with Server response " + m4);
 			}
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.out.println(e.getMessage());
 		}
 	}
 
